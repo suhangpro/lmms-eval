@@ -1,0 +1,19 @@
+group: omni3d_test
+task:
+  - omni3d_objectron_test
+  - omni3d_arkitscenes_test
+  - omni3d_hypersim_test
+  - omni3d_kitti_test
+  - omni3d_nuscenes_test
+  - omni3d_sunrgbd_test
+
+metadata:
+  description: "Omni3D Test: A unified benchmark for 3D object detection across 6 diverse datasets"
+  paper: "https://arxiv.org/abs/2207.10660"
+  datasets:
+    - Objectron: "Object-centric mobile captures"
+    - ARKitScenes: "Indoor AR scenes from iPad/iPhone"
+    - Hypersim: "Photorealistic synthetic indoor scenes"
+    - KITTI: "Autonomous driving urban scenes"
+    - nuScenes: "Large-scale autonomous driving"
+    - SUNRGBD: "Indoor RGB-D scenes"

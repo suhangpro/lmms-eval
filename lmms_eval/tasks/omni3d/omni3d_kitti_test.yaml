@@ -1,0 +1,16 @@
+# Omni3D KITTI Test - Autonomous driving scenes
+include: _default_template_yaml
+task: omni3d_kitti_test
+dataset_name: KITTI
+
+process_docs: !function utils.omni3d_process_docs_kitti
+
+metadata:
+  description: "Omni3D KITTI Test - Autonomous driving urban scenes"
+  main_categories:
+    - car
+    - pedestrian
+    - van
+    - cyclist
+    - truck
+  domain: autonomous-driving

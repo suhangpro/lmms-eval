@@ -1,0 +1,18 @@
+# Hypersim Test Toy Task - 10 evenly spaced samples for quick testing
+include: _default_template_yaml
+task: omni3d_hypersim_test_toy
+
+dataset_kwargs:
+  data_files:
+    test: lmms_eval/tasks/omni3d/dummy_dataset.json
+  token: False
+
+process_docs: !function utils.omni3d_process_docs_hypersim_toy
+
+lmms_eval_specific_kwargs:
+  dataset_name: "Hypersim"
+  split: "test"
+
+metadata:
+  version: 1.0
+  description: "Hypersim test toy - 10 evenly spaced samples for quick testing"

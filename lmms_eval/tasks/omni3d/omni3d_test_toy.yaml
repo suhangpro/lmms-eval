@@ -1,0 +1,5 @@
+# Omni3D Test Toy Group - Quick testing with 10 evenly spaced samples per dataset
+group: omni3d_test_toy
+task:
+  - omni3d_arkitscenes_test_toy
+  - omni3d_hypersim_test_toy

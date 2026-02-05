@@ -1,0 +1,18 @@
+# ARKitScenes Test Toy Task - 10 evenly spaced samples
+include: _default_template_yaml
+task: omni3d_arkitscenes_test_toy
+
+dataset_kwargs:
+  data_files:
+    test: lmms_eval/tasks/omni3d/dummy_dataset.json
+  token: False
+
+process_docs: !function utils.omni3d_process_docs_arkitscenes_toy
+
+lmms_eval_specific_kwargs:
+  dataset_name: "ARKitScenes"
+  split: "test"
+
+metadata:
+  version: 1.0
+  description: "ARKitScenes test toy - 10 evenly spaced samples for quick testing"

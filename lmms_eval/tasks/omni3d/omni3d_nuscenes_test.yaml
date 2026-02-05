@@ -1,0 +1,16 @@
+# Omni3D nuScenes Test - Large-scale autonomous driving dataset
+include: _default_template_yaml
+task: omni3d_nuscenes_test
+dataset_name: nuScenes
+
+process_docs: !function utils.omni3d_process_docs_nuscenes
+
+metadata:
+  description: "Omni3D nuScenes Test - Large-scale autonomous driving scenes"
+  main_categories:
+    - car
+    - pedestrian
+    - barrier
+    - truck
+    - traffic cone
+  domain: autonomous-driving

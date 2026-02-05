@@ -1,0 +1,17 @@
+# Omni3D Objectron Test - Object-centric mobile captures
+include: _default_template_yaml
+task: omni3d_objectron_test
+dataset_name: Objectron
+
+process_docs: !function utils.omni3d_process_docs_objectron
+
+metadata:
+  description: "Omni3D Objectron Test - Object-centric mobile captures"
+  main_categories:
+    - shoes
+    - chair
+    - cup
+    - camera
+    - laptop
+    - bottle
+  domain: object-centric

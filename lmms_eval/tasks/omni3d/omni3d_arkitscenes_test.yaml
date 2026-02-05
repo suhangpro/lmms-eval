@@ -1,0 +1,16 @@
+# Omni3D ARKitScenes Test - Indoor AR scenes from iPad/iPhone
+include: _default_template_yaml
+task: omni3d_arkitscenes_test
+dataset_name: ARKitScenes
+
+process_docs: !function utils.omni3d_process_docs_arkitscenes
+
+metadata:
+  description: "Omni3D ARKitScenes Test - Indoor AR scenes captured with iPad/iPhone"
+  main_categories:
+    - cabinet
+    - chair
+    - table
+    - sofa
+    - television
+  domain: indoor-AR

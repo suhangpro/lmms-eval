@@ -1,0 +1,16 @@
+# Omni3D Hypersim Test - Synthetic indoor scenes with photorealistic rendering
+include: _default_template_yaml
+task: omni3d_hypersim_test
+dataset_name: Hypersim
+
+process_docs: !function utils.omni3d_process_docs_hypersim
+
+metadata:
+  description: "Omni3D Hypersim Test - Photorealistic synthetic indoor scenes"
+  main_categories:
+    - books
+    - chair
+    - lamp
+    - table
+    - pillow
+  domain: synthetic-indoor

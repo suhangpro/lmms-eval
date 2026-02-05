@@ -1,0 +1,16 @@
+# Omni3D SUNRGBD Test - Indoor RGB-D scenes
+include: _default_template_yaml
+task: omni3d_sunrgbd_test
+dataset_name: SUNRGBD
+
+process_docs: !function utils.omni3d_process_docs_sunrgbd
+
+metadata:
+  description: "Omni3D SUNRGBD Test - Indoor RGB-D scenes with depth sensors"
+  main_categories:
+    - chair
+    - table
+    - desk
+    - pillow
+    - bin
+  domain: indoor-RGBD
