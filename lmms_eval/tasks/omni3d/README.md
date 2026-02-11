@@ -23,10 +23,9 @@ Where:
 - `width, height, length`: Object dimensions in meters
 - `roll, pitch, yaw`: Rotation angles
 
-> **Note on angle format:** Despite the prompt saying `[roll, pitch, yaw]`, the expected output is:
-> - **Normalized values** in approximately [-1, 1] range (scaled by 180 internally)
-> - **Order**: `[pitch, yaw, roll]` (positions 6, 7, 8 in bbox_3d)
-> 
+> **Note on dimension format:** `[width, height, length]` will be interpreted as `[size_x, size_y, size_z]`.
+>
+> **Note on angle format:** Despite the prompt saying `[roll, pitch, yaw]`, the output is interpreted as `[pitch, yaw, roll]` (positions 6, 7, 8 in bbox_3d). The angles are within a normalized [-1, 1] range, and will be scaled by 180 internally. 
 
 ## Datasets
 
@@ -130,6 +129,10 @@ python lmms_eval/tasks/omni3d/visualize_predictions.py \
 
 Use `--random` for random sampling instead of sequential.
 
+### Cluster Deployment (Slurm)
+
+For running evaluations on Slurm clusters with multi-GPU support and vLLM, see the [Omni3D Evaluation on ORD Cluster](slurm/README.md).
+
 ## Evaluation Metrics
 
 ### Basic Metrics
@@ -154,7 +157,7 @@ Locate the chair in the provided image and output their positions and dimensions
 
 - **Camera Coordinates**: Right-handed, +Z forward (depth), +X right, +Y down
 - **Bounding Box**: Center + dimensions + rotation (Euler angles)
-- **Units**: Meters for positions/dimensions, degrees for angles (see "Note on angle format" above)
+- **Units**: Meters for positions/dimensions, degrees (with normalization) for angles (see "Note on angle format" above)
 
 ## Filtering Criteria
 
@@ -167,16 +170,66 @@ Following Omni3D official protocol, annotations are filtered based on:
 - Positive dimensions
 - Positive depth
 
-## Citation
+## Performance Notes
 
-```bibtex
-@inproceedings{brazil2023omni3d,
-  title={Omni3D: A Large Benchmark and Model for 3D Object Detection in the Wild},
-  author={Brazil, Garrick and Abdelfattah, Abhinav and Zamir, Amir and others},
-  booktitle={CVPR},
-  year={2023}
-}
+- **Batch Size**: Recommend batch_size=1 for VLM models
+- **Speed**: Expect ~1-5 seconds per image on a single GPU depending on model and hardware
+- **Memory**: Models like Qwen3-VL-8B need ~16GB GPU memory
+
+### vLLM vs Native Transformers Inference
+
+**Important:** Installing vLLM may slow down native transformers-based inference, and therefore for a single-gpu setup vLLM is perhaps not a good choice.
+
+**Why this happens:** vLLM 0.11.0 has a dependency constraint requiring `transformers<5.0`, which downgrades to 4.57.6. The older transformers version lacks performance optimizations for vision-language models.
+
+#### Option 1: Use vLLM for inference (requires tuning)
+
+```bash
+uv run python -m lmms_eval \
+    --model vllm \
+    --model_args pretrained=Qwen/Qwen3-VL-4B-Instruct,tensor_parallel_size=1,gpu_memory_utilization=0.9,max_model_len=4096,max_num_seqs=8 \
+    --tasks omni3d_arkitscenes_test \
+    --batch_size 1 \
+    --log_samples \
+    --output_path ./outputs/omni3d_arkitscenes_test_vllm
 ```
+
+**Note:** vLLM on 24GB GPUs (e.g., 3090) requires careful memory tuning. Key parameters:
+- `pretrained=Qwen/Qwen3-VL-4B-Instruct`: Use 4B model
+- `gpu_memory_utilization=0.9`: Fraction of VRAM for vLLM
+- `max_model_len=4096`: Limit context length to reduce KV cache memory
+- `max_num_seqs=8`: Limit concurrent sequences
+
+#### Option 2: Remove vLLM for faster native inference (recommended for local)
+
+For local development on consumer GPUs, native transformers inference is often simpler and faster:
+
+```bash
+# Remove vLLM and restore newer transformers
+uv remove vllm
+uv add transformers --upgrade-package transformers
+uv add torch --upgrade-package torch
+
+# Verify versions (should be transformers>=5.1.0, torch>=2.10.0)
+uv pip list | grep -E "(transformers|torch)"
+
+# Run with native inference
+uv run python -m lmms_eval \
+    --model qwen3_vl \
+    --model_args pretrained=Qwen/Qwen3-VL-8B-Instruct \
+    --tasks omni3d_arkitscenes_test \
+    --batch_size 1 \
+    --log_samples \
+    --output_path ./outputs/omni3d_arkitscenes_test
+```
+
+#### Recommendation
+
+| Environment | Recommended Setup |
+|-------------|-------------------|
+| Local dev (single GPU, 24GB) | Native transformers 5.x (no vLLM) |
+| Multi-GPU cluster | vLLM with tensor_parallel_size>1 |
+| Production serving | vLLM with optimized settings |
 
 ## References
 
@@ -184,27 +237,3 @@ Following Omni3D official protocol, annotations are filtered based on:
 - [Omni3D Paper](https://arxiv.org/abs/2207.10660)
 - [Internal VLMEvalKit Implementation](https://gitlab-master.nvidia.com/dir/forks/vlmevalkit)
 
-## Troubleshooting
-
-### Image Not Found
-
-If you get "Image not found" errors:
-1. Check `OMNI3D_IMAGE_ROOT` environment variable
-2. Verify images exist at the expected paths
-3. Check file paths in JSON match actual image locations
-
-### No Valid Predictions
-
-If the model produces no valid predictions:
-1. Check model response format, in particular bbox_3d
-2. Check that dimensions and depth are positive
-3. Some models (e.g., Qwen2-VL) may not support 3D detection well; try Qwen3-VL
-
-
-## Performance Notes
-
-- **Batch Size**: Recommend batch_size=1 for VLM models
-- **Generation Length**: max_new_tokens=2048 allows multiple detections
-- **Speed**: Expect ~1-5 seconds per image on a single GPU depending on model and hardware
-- **Memory**: Models like Qwen3-VL-8B need ~16GB GPU memory
-- **Recommended Model**: Qwen3-VL-8B performs well on this task

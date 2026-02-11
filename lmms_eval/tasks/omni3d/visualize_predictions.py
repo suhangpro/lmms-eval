@@ -478,12 +478,22 @@ def visualize_predictions(samples_file, output_dir, num_samples=10, dataset_name
     return stats
 
 
+def detect_dataset_from_filename(filename):
+    """Auto-detect dataset name from samples filename."""
+    filename_lower = filename.lower()
+    datasets = ["ARKitScenes", "Hypersim", "KITTI", "nuScenes", "Objectron", "SUNRGBD"]
+    for ds in datasets:
+        if ds.lower() in filename_lower:
+            return ds
+    return None
+
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Visualize Omni3D predictions vs GT")
     parser.add_argument("--samples_file", required=True, help="Path to samples JSONL file")
     parser.add_argument("--output_dir", default="./outputs/omni3d_pred_vis", help="Output directory")
     parser.add_argument("--num_samples", type=int, default=10, help="Number of samples to visualize")
-    parser.add_argument("--dataset", default="Objectron", help="Dataset name")
+    parser.add_argument("--dataset", default=None, help="Dataset name (auto-detected from filename if not specified)")
     parser.add_argument("--random", action="store_true", help="Randomly select samples instead of first N")
     parser.add_argument("--seed", type=int, default=42, help="Random seed for reproducibility")
     parser.add_argument("--no_scale_rotation", action="store_true", 
@@ -492,6 +502,17 @@ if __name__ == "__main__":
                        help="Suppress debug output (raw responses, bbox values, etc.)")
     
     args = parser.parse_args()
+    
+    # Auto-detect dataset if not specified
+    dataset = args.dataset
+    if dataset is None:
+        dataset = detect_dataset_from_filename(args.samples_file)
+        if dataset is None:
+            print("Error: Could not auto-detect dataset from filename. Please specify --dataset")
+            print("Valid datasets: ARKitScenes, Hypersim, KITTI, nuScenes, Objectron, SUNRGBD")
+            exit(1)
+        print(f"Auto-detected dataset: {dataset}")
+    
     scale_rotation = not args.no_scale_rotation
-    visualize_predictions(args.samples_file, args.output_dir, args.num_samples, args.dataset, 
+    visualize_predictions(args.samples_file, args.output_dir, args.num_samples, dataset, 
                          args.random, args.seed, scale_rotation, args.quiet)
