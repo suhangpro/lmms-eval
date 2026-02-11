@@ -20,6 +20,24 @@ metric_list:
   - metric: omni3d_ap3d
     aggregation: !function utils.omni3d_ap3d_agg
     higher_is_better: true
+  - metric: omni3d_ap3d_15
+    aggregation: !function utils.omni3d_ap3d_15_agg
+    higher_is_better: true
+  - metric: omni3d_ap3d_25
+    aggregation: !function utils.omni3d_ap3d_25_agg
+    higher_is_better: true
+  - metric: omni3d_ap3d_50
+    aggregation: !function utils.omni3d_ap3d_50_agg
+    higher_is_better: true
+  - metric: omni3d_ar3d_1
+    aggregation: !function utils.omni3d_ar3d_1_agg
+    higher_is_better: true
+  - metric: omni3d_ar3d_10
+    aggregation: !function utils.omni3d_ar3d_10_agg
+    higher_is_better: true
+  - metric: omni3d_ar3d_100
+    aggregation: !function utils.omni3d_ar3d_100_agg
+    higher_is_better: true
 
 generation_kwargs:
   max_new_tokens: 2048

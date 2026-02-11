@@ -1,48 +1,27 @@
 # Omni3D: 3D Object Detection Benchmark
 
+## Quick Start (GR00T)
+
+For GR00T users, use the provided vLLM evaluation scripts:
+
+```bash
+# Full Omni3D benchmark (all 6 datasets)
+bash vllm_eval_one.sh omni3d_test Qwen/Qwen3-VL-8B-Instruct
+
+# Single dataset subset
+bash vllm_eval_one.sh omni3d_arkitscenes_test Qwen/Qwen3-VL-8B-Instruct
+```
+
+See `vllm_eval.sh` and `vllm_eval_one.sh` for more evaluation options.
+
+> **Data location**: For now, data is assumed to be local under specified paths (see "Configuration" below).
+
+
+---
+
 ## Overview
 
 Omni3D is a comprehensive benchmark for evaluating 3D object detection capabilities of vision-language models from single RGB images. This implementation supports all 6 Omni3D datasets with official AP3D/AR3D metrics.
-
-## Task Format
-
-**Input:** Single RGB image  
-**Output:** JSON list of 3D bounding boxes
-
-```json
-[
-  {
-    "bbox_3d": [x, y, z, width, height, length, roll, pitch, yaw],
-    "label": "chair"
-  }
-]
-```
-
-Where:
-- `x, y, z`: Object center in camera coordinates (meters), z = depth
-- `width, height, length`: Object dimensions in meters
-- `roll, pitch, yaw`: Rotation angles
-
-> **Note on dimension format:** `[width, height, length]` will be interpreted as `[size_x, size_y, size_z]`.
->
-> **Note on angle format:** Despite the prompt saying `[roll, pitch, yaw]`, the output is interpreted as `[pitch, yaw, roll]` (positions 6, 7, 8 in bbox_3d). The angles are within a normalized [-1, 1] range, and will be scaled by 180 internally. 
-
-## Datasets
-
-| Dataset | Task Name | Domain | Example Categories |
-|---------|-----------|--------|-------------------|
-| ARKitScenes | `omni3d_arkitscenes_test` | Indoor AR scenes | cabinet, chair, table, sofa |
-| Hypersim | `omni3d_hypersim_test` | Synthetic indoor | chair, table, sofa, bed |
-| KITTI | `omni3d_kitti_test` | Autonomous driving | car, pedestrian, cyclist |
-| nuScenes | `omni3d_nuscenes_test` | Autonomous driving | car, truck, bus, pedestrian |
-| Objectron | `omni3d_objectron_test` | Object-centric mobile | chair, cup, laptop, camera |
-| SUNRGBD | `omni3d_sunrgbd_test` | Indoor RGB-D | bed, chair, desk, table |
-
-**Total:** 97 object categories across all datasets
-
-### Task Groups
-
-- `omni3d_test`: All 6 datasets
 
 ## Setup
 
@@ -133,6 +112,54 @@ Use `--random` for random sampling instead of sequential.
 
 For running evaluations on Slurm clusters with multi-GPU support and vLLM, see the [Omni3D Evaluation on ORD Cluster](slurm/README.md).
 
+## Datasets
+
+| Dataset | Task Name | Domain | Example Categories |
+|---------|-----------|--------|-------------------|
+| ARKitScenes | `omni3d_arkitscenes_test` | Indoor AR scenes | cabinet, chair, table, sofa |
+| Hypersim | `omni3d_hypersim_test` | Synthetic indoor | chair, table, sofa, bed |
+| KITTI | `omni3d_kitti_test` | Autonomous driving | car, pedestrian, cyclist |
+| nuScenes | `omni3d_nuscenes_test` | Autonomous driving | car, truck, bus, pedestrian |
+| Objectron | `omni3d_objectron_test` | Object-centric mobile | chair, cup, laptop, camera |
+| SUNRGBD | `omni3d_sunrgbd_test` | Indoor RGB-D | bed, chair, desk, table |
+
+**Total:** 97 object categories across all datasets
+
+### Task Groups
+
+- `omni3d_test`: All 6 datasets
+
+## Task Format
+
+**Input:** Single RGB image  
+**Output:** JSON list of 3D bounding boxes
+
+**Prompt format:**
+```
+Locate the {category} in the provided image and output their positions and dimensions using 3D bounding boxes. The results must be in the JSON format: `[{"bbox_3d":[x_center, y_center, z_center, x_size, y_size, z_size, roll, pitch, yaw],"label":"{category}"}]`. If no {category} is visible, output `[]`.
+```
+
+**Expected output:**
+```json
+[
+  {
+    "bbox_3d": [x, y, z, width, height, length, roll, pitch, yaw],
+    "label": "chair"
+  }
+]
+```
+
+Where:
+- `x, y, z`: Object center in camera coordinates (meters), z = depth
+- `width, height, length`: Object dimensions in meters
+- `roll, pitch, yaw`: Rotation angles
+
+> **Note on dimension format:** `[width, height, length]` will be interpreted as `[x_size, y_size, z_size]`.
+>
+> VLMEvalKit reverses dimension order: `[x_size, y_size, z_size]` → `[z_size, y_size, x_size]`. This is **disabled by default** here. To enable: `OMNI3D_REVERSE_DIMENSIONS=1 python -m lmms_eval ...`
+>
+> **Note on angle format:** Despite the prompt saying `[roll, pitch, yaw]`, the output is interpreted as `[pitch, yaw, roll]` (positions 6, 7, 8 in bbox_3d). The angles are within a normalized [-1, 1] range, and will be scaled by 180 internally. 
+
 ## Evaluation Metrics
 
 ### Basic Metrics
@@ -144,14 +171,6 @@ For running evaluations on Slurm clusters with multi-GPU support and vLLM, see t
 - **AR3D@1/10/100**: Average Recall at various max detection limits
 
 The AP3D metrics use precise 3D IoU computation via convex hull intersection (no external dependencies required).
-
-## Prompt Format
-
-The prompt sent to the model follows format:
-
-```
-Locate the chair in the provided image and output their positions and dimensions using 3D bounding boxes. The results must be in the JSON format: `[{"bbox_3d":[x_center, y_center, z_center, x_size, y_size, z_size, roll, pitch, yaw],"label":"chair"}]`. If no chair is visible, output `[]`.
-```
 
 ## Coordinate System
 
@@ -236,4 +255,3 @@ uv run python -m lmms_eval \
 - [Omni3D GitHub](https://github.com/facebookresearch/omni3d)
 - [Omni3D Paper](https://arxiv.org/abs/2207.10660)
 - [Internal VLMEvalKit Implementation](https://gitlab-master.nvidia.com/dir/forks/vlmevalkit)
-

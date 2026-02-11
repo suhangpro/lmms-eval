@@ -263,7 +263,13 @@ def omni3d_process_results(
     return {
         "omni3d_valid_rate": result, 
         "omni3d_recall_proxy": result,
-        "omni3d_ap3d": result,  # New metric
+        "omni3d_ap3d": result,
+        "omni3d_ap3d_15": result,
+        "omni3d_ap3d_25": result,
+        "omni3d_ap3d_50": result,
+        "omni3d_ar3d_1": result,
+        "omni3d_ar3d_10": result,
+        "omni3d_ar3d_100": result,
     }
 
 
@@ -424,24 +430,38 @@ def omni3d_recall_proxy_agg(results: List[Dict]) -> float:
     return total_with_predictions / len(results)
 
 
-def omni3d_ap3d_agg(results: List[Dict]) -> float:
-    """Aggregate official AP3D metric using Omni3D benchmark protocol.
-    
-    This computes the mean AP across IoU thresholds [0.15, 0.25, 0.50]
-    following the official Omni3D benchmark.
-    
-    Uses PyTorch3D for exact 3D IoU if available, otherwise falls back
-    to AABB approximation.
+# Cache for computed AP3D metrics to avoid recomputation
+_AP3D_METRICS_CACHE: Dict[int, Dict] = {}
+
+
+def _compute_ap3d_metrics(results: List[Dict]) -> Dict:
+    """Compute all AP3D/AR3D metrics (cached).
     
     Args:
         results: List of result dicts from process_results
     
     Returns:
-        AP3D value (mean over thresholds)
+        Dict with all metrics (AP3D, AP3D@0.15, etc.)
     """
+    # Use hash of result IDs as cache key
+    cache_key = hash(tuple(r.get("image_id", i) for i, r in enumerate(results)))
+    
+    if cache_key in _AP3D_METRICS_CACHE:
+        return _AP3D_METRICS_CACHE[cache_key]
+    
     if not results:
         eval_logger.warning("No results for AP3D computation")
-        return 0.0
+        empty_metrics = {
+            "AP3D": 0.0,
+            "AP3D@0.15": 0.0,
+            "AP3D@0.25": 0.0,
+            "AP3D@0.50": 0.0,
+            "AR3D@1": 0.0,
+            "AR3D@10": 0.0,
+            "AR3D@100": 0.0,
+        }
+        _AP3D_METRICS_CACHE[cache_key] = empty_metrics
+        return empty_metrics
     
     # Initialize metrics calculator (precise 3D IoU via convex hull intersection)
     metrics_calculator = Omni3DMetrics(iou_method="precise")
@@ -486,7 +506,44 @@ def omni3d_ap3d_agg(results: List[Dict]) -> float:
             eval_logger.info(f"  {cat:<20}: AP3D={cat_metrics['AP3D']:.4f}")
         eval_logger.info("=" * 80)
     
-    return metrics["AP3D"]
+    # Cache and return
+    _AP3D_METRICS_CACHE[cache_key] = metrics
+    return metrics
+
+
+def omni3d_ap3d_agg(results: List[Dict]) -> float:
+    """Aggregate official AP3D metric (mean over thresholds)."""
+    return _compute_ap3d_metrics(results).get("AP3D", 0.0)
+
+
+def omni3d_ap3d_15_agg(results: List[Dict]) -> float:
+    """Aggregate AP3D@0.15 metric."""
+    return _compute_ap3d_metrics(results).get("AP3D@0.15", 0.0)
+
+
+def omni3d_ap3d_25_agg(results: List[Dict]) -> float:
+    """Aggregate AP3D@0.25 metric."""
+    return _compute_ap3d_metrics(results).get("AP3D@0.25", 0.0)
+
+
+def omni3d_ap3d_50_agg(results: List[Dict]) -> float:
+    """Aggregate AP3D@0.50 metric."""
+    return _compute_ap3d_metrics(results).get("AP3D@0.50", 0.0)
+
+
+def omni3d_ar3d_1_agg(results: List[Dict]) -> float:
+    """Aggregate AR3D@1 metric."""
+    return _compute_ap3d_metrics(results).get("AR3D@1", 0.0)
+
+
+def omni3d_ar3d_10_agg(results: List[Dict]) -> float:
+    """Aggregate AR3D@10 metric."""
+    return _compute_ap3d_metrics(results).get("AR3D@10", 0.0)
+
+
+def omni3d_ar3d_100_agg(results: List[Dict]) -> float:
+    """Aggregate AR3D@100 metric."""
+    return _compute_ap3d_metrics(results).get("AR3D@100", 0.0)
 
 
 # Dataset loading functions for lmms-eval

@@ -9,6 +9,7 @@ Reference: https://github.com/facebookresearch/omni3d/blob/main/cubercnn/evaluat
 """
 
 import json
+import os
 import re
 from collections import defaultdict
 from typing import Any, Dict, List, Optional, Tuple
@@ -18,7 +19,18 @@ from scipy.spatial import ConvexHull, HalfspaceIntersection
 from scipy.optimize import linprog
 
 
-def parse_bbox_3d_from_text(text: str) -> List[Dict[str, Any]]:
+# ============================================================================
+# Configuration: Dimension Reversal
+# ============================================================================
+# VLMEvalKit reverses dimensions: [x_size, y_size, z_size] -> [z_size, y_size, x_size]
+# Set OMNI3D_REVERSE_DIMENSIONS=1 to enable this behavior
+# Default: False (no reversal)
+REVERSE_DIMENSIONS = os.environ.get("OMNI3D_REVERSE_DIMENSIONS", "0").lower() in ("1", "true", "yes")
+
+
+def parse_bbox_3d_from_text(
+    text: str, reverse_dimensions: Optional[bool] = None
+) -> List[Dict[str, Any]]:
     """Parse 3D bounding boxes from model response text.
     
     Handles various response formats:
@@ -28,6 +40,9 @@ def parse_bbox_3d_from_text(text: str) -> List[Dict[str, Any]]:
     
     Args:
         text: Model response text containing JSON predictions
+        reverse_dimensions: If True, reverse dimension order from [x_size, y_size, z_size]
+                          to [z_size, y_size, x_size] (matching VLMEvalKit behavior).
+                          Default: Uses REVERSE_DIMENSIONS module config (env: OMNI3D_REVERSE_DIMENSIONS)
     
     Returns:
         List of bbox dicts, each with 'bbox_3d' (9 floats) and 'label' (str)
@@ -38,6 +53,9 @@ def parse_bbox_3d_from_text(text: str) -> List[Dict[str, Any]]:
         >>> parse_bbox_3d_from_text(text)
         [{"bbox_3d": [0.0, 0.0, 5.0, 1.0, 1.0, 2.0, 0.0, 0.0, 0.0], "label": "chair"}]
     """
+    # Use module-level default if not specified
+    if reverse_dimensions is None:
+        reverse_dimensions = REVERSE_DIMENSIONS
     if not text or not isinstance(text, str):
         return []
     
@@ -90,14 +108,17 @@ def parse_bbox_3d_from_text(text: str) -> List[Dict[str, Any]]:
                     pass
                 start_idx = None
     
-    return _validate_and_normalize_bboxes(items)
+    return _validate_and_normalize_bboxes(items, reverse_dimensions)
 
 
-def _validate_and_normalize_bboxes(bboxes: List[Dict]) -> List[Dict[str, Any]]:
+def _validate_and_normalize_bboxes(
+    bboxes: List[Dict], reverse_dimensions: bool = False
+) -> List[Dict[str, Any]]:
     """Validate and normalize bbox format.
     
     Args:
         bboxes: List of raw bbox dicts
+        reverse_dimensions: Whether to reverse dimension order
     
     Returns:
         List of validated and normalized bbox dicts
@@ -128,6 +149,15 @@ def _validate_and_normalize_bboxes(bboxes: List[Dict]) -> List[Dict[str, Any]]:
             # Check for NaN or inf
             if any(np.isnan(x) or np.isinf(x) for x in bbox_3d_float):
                 continue
+            
+            # Apply dimension reversal if requested
+            # [x, y, z, x_size, y_size, z_size, r, p, y] -> [x, y, z, z_size, y_size, x_size, r, p, y]
+            if reverse_dimensions:
+                bbox_3d_float = (
+                    bbox_3d_float[:3] +                    # center: x, y, z
+                    bbox_3d_float[3:6][::-1] +             # dimensions reversed: [w,h,l] -> [l,h,w]
+                    bbox_3d_float[6:]                      # rotation: roll, pitch, yaw
+                )
             
             validated.append({
                 "bbox_3d": bbox_3d_float,
